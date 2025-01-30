@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify PCA Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="title-bar">
+    <h1>Spotify PCA Dashboard</h1>
+    <p>Select clusters on the scatterplot to see average feature values in the bar chart and additional cluster info.
+    </p>
+  </div>
+  <div class="dashboard-container">
+    <!-- Scatterplot -->
+    <div id="scatterplot-container" class="chart"></div>
+
+    <div class="right-container">
+      <!-- Bar Chart -->
+      <div id="barchart-container" class="chart"></div>
+
+      <!-- Cluster Information Section -->
+      <div id="cluster-info" class="info-box">
+        <p id="cluster-details">Click on a cluster to see details.</p>
+        <button id="reset-view" style="display: none;">Reset View</button>
+      </div>
+    </div>
+  </div>
+  <!-- Filters Section -->
+  <div id="filters-container" class="filters-box">
+    <div class="filters-grid">
+
+      <!-- Group: Genres -->
+      <div class="filter-category">
+        <div class="filter-group">
+          <label for="genre-search">Select Genres</label>
+          <input class="search" type="text" id="genre-search" placeholder="Search genre">
+          <div id="genre-filters" class="checkbox-group"></div>
+        </div>
+        <div class="filter-group">
+          <h4>Top Genres</h4>
+          <div id="top-genres-chart"></div>
+        </div>
+      </div>
+
+      <!-- Group: Artists -->
+      <div class="filter-category">
+        <div class="filter-group">
+          <label for="artist-search">Select Artists</label>
+          <input class="search" type="text" id="artist-search" placeholder="Search artist">
+          <div id="artist-filters" class="checkbox-group"></div>
+        </div>
+        <div class="filter-group">
+          <h4>Top Artists</h4>
+          <div id="top-artists-chart"></div>
+        </div>
+      </div>
+
+      <!-- Separate: Top Tracks -->
+      <div class="filter-category">
+        <h4>📀 Top Tracks</h4>
+        <div id="top-tracks-chart"></div>
+      </div>
+
+      <!-- Separate: Date Interval Selection -->
+      <div class="filter-category">
+        <h4>📅 Date Interval Selector</h4>
+        <div id="date-interval-selector"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,290 @@
+/* General layout */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #1e1e2f;  /* Dark background */
+  color: #ffffff;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  overflow-x: hidden; /* Prevents horizontal scrolling */
+}
+
+/* Title bar */
+.title-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* Dashboard container */
+.dashboard-container {
+  display: flex;
+  flex-wrap: nowrap; /* Prevent unnecessary wrapping */
+  justify-content: center;
+  align-items: flex-start;
+  width: 98%;
+  gap: 25px; /* Adjust space between left and right */
+  margin: auto;
+}
+
+/* Scatterplot container */
+#scatterplot-container {
+  flex: 2;
+  max-width: 60%;
+  min-width: 500px;
+}
+
+/* Right-side container */
+.right-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  max-width: 35%;
+  min-width: 300px;
+  gap: 20px;
+}
+
+/* Bar Chart */
+#barchart-container {
+  width: 100%;
+}
+
+/* Cluster Details Section */
+#cluster-details {
+  margin-top: 0px;
+  margin-bottom: 2px;
+}
+
+/* Cluster Info Section */
+.info-box {
+  background-color: #2e2e3f;
+  padding: 12px; /* Reduce padding */
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+  color: white;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.4;
+  width: 100%; /* Make it use the available space */
+  max-width: 100%; /* Prevent overflow */
+  margin: 0 auto; /* Center properly */
+}
+
+/* Reduce space above the heading */
+.info-box h3 {
+  margin-top: 3px;
+  margin-bottom: 6px; /* Reduce spacing */
+  font-size: 17px;
+}
+
+/* Adaptive Grid Layout - Maximum 2 Rows */
+.info-grid {
+  display: grid;
+  grid-template-rows: repeat(2, auto); /* Maximum 2 rows */
+  grid-auto-flow: column; /* Fill columns first */
+  grid-auto-columns: minmax(140px, 1fr); /* Ensures columns size properly */
+  gap: 6px; /* Reduce gap for compact layout */
+  padding-bottom: 6px;
+  overflow-x: auto; /* Enable scrolling if items exceed space */
+  max-height: 100%; /* Prevents excessive height growth */
+}
+
+/* Mini Info Boxes */
+.info-item {
+  background-color: #3a3a4f;
+  padding: 6px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.1);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+/* Enable horizontal scrolling if needed */
+.info-grid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.info-grid::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+.info-grid::-webkit-scrollbar-track {
+  background: #2e2e3f;
+}
+
+.info-item span {
+  display: block;
+  font-size: 13px;
+  font-weight: normal;
+  color: #ccc;
+}
+
+/* Ensure SVG charts fit properly */
+svg {
+  max-width: 100%;
+  height: auto;
+  overflow: hidden;
+  background-color: #2e2e3f;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Reset Button Styling */
+#reset-view {
+  background-color: #ff7f0e; /* Match theme's vibrant accent color */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0px 4px 10px rgba(255, 127, 14, 0.3);
+  text-align: center;
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* Hover effect */
+#reset-view:hover {
+  background-color: #e66b00;
+  transform: scale(1.05);
+}
+
+/* Active effect */
+#reset-view:active {
+  background-color: #cc5e00;
+  transform: scale(0.98);
+}
+
+/* Filters Section */
+.filters-box {
+  padding: 15px;
+  color: white;
+  text-align: center;
+  font-size: 15px;
+  height: 40%;
+  width: 100%;
+  max-width: none; /* Override max-width limitation */
+  margin: 0 auto; /* Center it properly */
+  display: flex;
+  justify-content: center;
+}
+
+/* Filters Grid Layout */
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  padding: 10px;
+  width: 100%; /* Ensure grid takes full width */
+  max-width: 1400px; /* Adjust as needed */
+}
+
+/* Grouped Categories */
+.filter-category {
+  background-color: #38384f;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0px 3px 6px rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/* Individual Filter Groups */
+.filter-group {
+  background-color: #3a3a4f;
+  padding: 8px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0px 2px 5px rgba(255, 255, 255, 0.1);
+  margin-bottom: 10px;
+  width: auto;
+  height: auto;
+}
+
+/* Checkboxes */
+/* Genre & Artist Checkbox Groups */
+.checkbox-group {
+  text-align: left;
+  padding: 5px;
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px; /* Space between items */
+  width: auto;
+}
+
+/* Align checkbox and label in a row */
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between checkbox and text */
+  font-size: 14px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+/* Style checkboxes */
+.checkbox-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff7f0e; /* Match dashboard theme */
+  cursor: pointer;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Search Bars */
+input[type="text"] {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  border: none;
+  background-color: #444;
+  color: white;
+}
+
+/* Responsive Layout */
+@media (max-width: 1024px) {
+  .dashboard-container {
+      flex-wrap: wrap;
+      justify-content: center;
+  }
+
+  #scatterplot-container, .right-container {
+      flex: 1;
+      max-width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .dashboard-container {
+      flex-direction: column;
+      align-items: center;
+  }
+
+  #scatterplot-container, .right-container {
+      flex: 1;
+      max-width: 100%;
+  }
+}
