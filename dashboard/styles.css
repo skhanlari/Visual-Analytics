@@ -21,37 +21,55 @@ body {
   text-align: center;
 }
 
-/* Dashboard container */
+/* Title */
+.title-bar h1 {
+  font-size: 30px;
+  margin: 0;
+}
+
+/* Responsive Dashboard */
 .dashboard-container {
   display: flex;
   flex-wrap: nowrap; /* Prevent unnecessary wrapping */
-  justify-content: center;
+  justify-content: space-between;
   align-items: flex-start;
-  width: 98%;
-  gap: 25px; /* Adjust space between left and right */
+  width: 100%;
+  max-width: 93vw; /* Prevent excessive stretching beyond 90% of viewport width */
+  aspect-ratio: 16 / 10; /* Ensures a balanced width-to-height ratio */
+  gap: 25px;
   margin: auto;
+  height: 62vh; /* Ensure consistent height */
 }
 
-/* Scatterplot container */
+/* Scatterplot Container */
 #scatterplot-container {
-  flex: 2;
+  flex: 3;
   max-width: 60%;
-  min-width: 500px;
+  min-width: 600px;
+  height: 60vh; /* Dynamic height based on viewport */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Right-side container */
+/* Right-side container for bar chart and cluster info */
 .right-container {
   display: flex;
   flex-direction: column;
   flex: 1;
-  max-width: 35%;
-  min-width: 300px;
+  max-width: 40%;
+  min-width: 350px;
+  height: 60vh; /* Maintain same height as scatterplot */
   gap: 20px;
 }
 
 /* Bar Chart */
 #barchart-container {
   width: 100%;
+  height: 40vh; /* Make sure it resizes well */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Cluster Details Section */
@@ -73,6 +91,7 @@ body {
   width: 100%; /* Make it use the available space */
   max-width: 100%; /* Prevent overflow */
   margin: 0 auto; /* Center properly */
+  height: 20vh;
 }
 
 /* Reduce space above the heading */
@@ -129,8 +148,8 @@ body {
 
 /* Ensure SVG charts fit properly */
 svg {
-  max-width: 100%;
-  height: auto;
+  width: 100%;
+  height: 100%; /* Make SVG fill its container */
   overflow: hidden;
   background-color: #2e2e3f;
   border-radius: 10px;
@@ -264,27 +283,30 @@ input[type="text"] {
   color: white;
 }
 
-/* Responsive Layout */
-@media (max-width: 1024px) {
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
   .dashboard-container {
-      flex-wrap: wrap;
-      justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    height: auto; /* Allow flexibility */
   }
 
   #scatterplot-container, .right-container {
-      flex: 1;
-      max-width: 100%;
+    max-width: 100%;
+    height: auto; /* Adapt height dynamically */
+  }
+
+  #barchart-container {
+    height: 50vh; /* Increase bar chart height for smaller screens */
   }
 }
 
 @media (max-width: 800px) {
-  .dashboard-container {
-      flex-direction: column;
-      align-items: center;
+  #scatterplot-container {
+    height: 50vh; /* Reduce height on smaller screens */
   }
 
-  #scatterplot-container, .right-container {
-      flex: 1;
-      max-width: 100%;
+  #barchart-container {
+    height: 40vh; /* Keep bar chart readable */
   }
 }

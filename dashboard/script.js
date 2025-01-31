@@ -2,20 +2,35 @@
 const colorPalette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"];
 const margin = { top: 20, right: 30, bottom: 50, left: 50 };
 
-// Set chart dimensions
+// Function to get container dimensions dynamically
 const updateDimensions = () => {
+  const scatterContainer = document.getElementById("scatterplot-container");
+  const barContainer = document.getElementById("barchart-container");
+
   return {
-    scatter: { width: window.innerWidth * 0.6, height: window.innerHeight * 0.6 },
-    bar: { width: window.innerWidth * 0.35, height: window.innerHeight * 0.4 },
+    scatter: {
+      width: scatterContainer ? scatterContainer.clientWidth : window.innerWidth * 0.6,
+      height: scatterContainer ? scatterContainer.clientHeight : window.innerHeight * 0.6,
+    },
+    bar: {
+      width: barContainer ? barContainer.clientWidth : window.innerWidth * 0.35,
+      height: barContainer ? barContainer.clientHeight : window.innerHeight * 0.4,
+    },
   };
 };
-let { scatter, bar } = updateDimensions();
-window.addEventListener("resize", () => { ({ scatter, bar } = updateDimensions()); });
 
-let selectedCluster = null;
+let scatter, bar, selectedCluster;
+window.addEventListener("load", () => {
+  ({ scatter, bar } = updateDimensions());
+  createScatterplot([]); // Ensure initial render
+  createBarchart([]);
+});
 
-// Load and process data
-d3.csv("../data/pca_results_with_clusters.csv").then(data => {
+let data;
+
+
+d3.csv("../data/pca_results_with_clusters.csv").then(csvData => {
+  data = csvData;
   data.forEach(d => {
     d.pca_x = +d.pca_x;
     d.pca_y = +d.pca_y;
@@ -26,8 +41,6 @@ d3.csv("../data/pca_results_with_clusters.csv").then(data => {
   const normalize = (val, min, max) => (val - min) / (max - min);
   const minLoudness = d3.min(data, d => d.loudness), maxLoudness = d3.max(data, d => d.loudness);
   data.forEach(d => d.loudness = normalize(d.loudness, minLoudness, maxLoudness));
-
-  const clusters = [...new Set(data.map(d => d.cluster))];
 
   const scatterSvg = createScatterplot(data);
   const barSvg = createBarchart();
@@ -53,6 +66,7 @@ function createScatterplot(data) {
 
   scatterSvg.append("g").attr("transform", `translate(0, ${scatter.height - margin.top - margin.bottom})`).call(d3.axisBottom(xScale));
   scatterSvg.append("g").call(d3.axisLeft(yScale));
+  scatterSvg.selectAll(".scatter-circle").attr("opacity", c => (c.cluster === selectedCluster ? 1 : 0.3));
 
   scatterSvg.selectAll(".scatter-circle").data(data).enter().append("circle")
     .attr("cx", d => xScale(d.pca_x)).attr("cy", d => yScale(d.pca_y)).attr("r", 4)
