@@ -38,7 +38,7 @@ body {
   aspect-ratio: 16 / 10; /* Ensures a balanced width-to-height ratio */
   gap: 25px;
   margin: auto;
-  height: 62vh; /* Ensure consistent height */
+  height: 60vh; /* Ensure consistent height */
 }
 
 /* Scatterplot Container */
@@ -191,8 +191,8 @@ svg {
   color: white;
   text-align: center;
   font-size: 15px;
-  height: 40%;
-  width: 100%;
+  height: 27vh;
+  width: auto;
   max-width: none; /* Override max-width limitation */
   margin: 0 auto; /* Center it properly */
   display: flex;
@@ -206,7 +206,7 @@ svg {
   gap: 15px;
   padding: 10px;
   width: 100%; /* Ensure grid takes full width */
-  max-width: 1400px; /* Adjust as needed */
+  max-width: 100vw; /* Adjust as needed */
 }
 
 /* Grouped Categories */
@@ -220,7 +220,13 @@ svg {
   display: flex;
   justify-content: space-between;
   gap: 20px;
+  max-height: 25vh;
 }
+
+.top {
+  grid-column: span 2;
+}
+
 
 /* Individual Filter Groups */
 .filter-group {
@@ -231,6 +237,7 @@ svg {
   font-weight: bold;
   box-shadow: 0px 2px 5px rgba(255, 255, 255, 0.1);
   margin-bottom: 10px;
+  max-width: 35%;
   width: auto;
   height: auto;
 }
@@ -240,7 +247,7 @@ svg {
 .checkbox-group {
   text-align: left;
   padding: 5px;
-  max-height: 150px;
+  max-height: 18vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -270,17 +277,37 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 /* Search Bars */
 input[type="text"] {
-  width: 100%;
+  width: 95%;
   padding: 6px;
   margin-bottom: 5px;
   border-radius: 5px;
   border: none;
   background-color: #444;
   color: white;
+}
+
+#top-genres-chart,
+#top-artists-chart {
+  margin: auto;  /* Center them and add vertical spacing */
+  height: 93%;
+  width: 100%;
+}
+
+.hor-chart {
+  width: 65%;
+  max-width: none;
+}
+
+/* Chart Titles */
+.chart-title {
+  font-size: 18px;
+  margin: 0;
+  text-align: center;
 }
 
 /* Responsive Adjustments */
