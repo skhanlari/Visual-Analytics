@@ -6,7 +6,6 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 # File paths
 data_folder = "data"
 high_popularity_file = os.path.join(data_folder, "high_popularity_spotify_data.csv")
@@ -19,8 +18,13 @@ low_popularity_data = pd.read_csv(low_popularity_file)
 # Combine datasets
 data = pd.concat([high_popularity_data, low_popularity_data], ignore_index=True)
 
+# Remove duplicate track names (keep the first occurrence)
+data = data.drop_duplicates(subset=['track_name'])
+
 # Select audio features for PCA
-features = ['energy', 'tempo', 'danceability', 'loudness', 'liveness', 'valence', 'speechiness', 'instrumentalness', 'mode', 'key', 'duration_ms', 'acousticness']
+features = ['energy', 'tempo', 'danceability', 'loudness', 'liveness', 
+            'valence', 'speechiness', 'instrumentalness', 'mode', 
+            'key', 'duration_ms', 'acousticness']
 
 # Drop rows with missing values in the selected features
 data = data.dropna(subset=features)
@@ -41,7 +45,8 @@ data['pca_y'] = pca_result[:, 1]
 inertia = []  # Sum of squared distances to closest cluster center
 cluster_range = range(1, 11)  # Test cluster sizes from 1 to 10
 
-""" for k in cluster_range:
+"""
+for k in cluster_range:
     kmeans = KMeans(n_clusters=k, random_state=42)
     kmeans.fit(pca_result)
     inertia.append(kmeans.inertia_)
@@ -53,7 +58,8 @@ plt.title('Elbow Method for Optimal K')
 plt.xlabel('Number of Clusters (k)')
 plt.ylabel('Inertia')
 plt.grid(True)
-plt.show() """
+plt.show()
+"""
 
 # Choose the optimal number of clusters based on the Elbow Method
 optimal_clusters = 4  # Adjust this based on the Elbow Method plot

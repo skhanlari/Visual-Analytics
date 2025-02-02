@@ -23,11 +23,11 @@
       <!-- Bar Chart -->
       <div id="barchart-container" class="chart"></div>
 
-      <!-- Cluster Information Section -->
-      <div id="cluster-info" class="info-box">
-        <p id="cluster-details">Click on a cluster to see details.</p>
-        <button id="reset-view" style="display: none;">Reset View</button>
-      </div>
+      <!-- Date Interval Selector -->
+       <div class="date-container">
+        <h4>Date Interval Selector</h4>
+        <div id="date-interval-selector"></div>
+       </div>
     </div>
   </div>
   <!-- Filters Section -->
@@ -61,15 +61,20 @@
       </div>
 
       <!-- Separate: Top Tracks -->
-      <div class="filter-category">
-        <h4>📀 Top 10 Tracks</h4>
-        <div id="top-tracks-chart"></div>
+      <div id="top-tracks" class="filter-category">
+        <h4>Top 10 Tracks</h4>
+        <div class="top-tracks">
+          <div id="top-tracks-chart"></div>
+        </div>
       </div>
 
       <!-- Separate: Date Interval Selection -->
       <div class="filter-category">
-        <h4>📅 Date Interval Selector</h4>
-        <div id="date-interval-selector"></div>
+        <!-- Cluster Information Section -->
+        <div id="cluster-info" class="info-box">
+          <p id="cluster-details">Click on a cluster to see details.</p>
+          <button id="reset-view" style="display: none;">Reset View</button>
+        </div>
       </div>
 
     </div>

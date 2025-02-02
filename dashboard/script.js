@@ -2,11 +2,14 @@
 const colorPalette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"];
 const margin = { top: 20, right: 30, bottom: 50, left: 50 };
 
+// Global variables for dimensions and filtering.
+let scatter, bar, selectedCluster = null;
+let selectedDateRange = null;
+
 // Function to get container dimensions dynamically
 const updateDimensions = () => {
   const scatterContainer = document.getElementById("scatterplot-container");
   const barContainer = document.getElementById("barchart-container");
-
   return {
     scatter: {
       width: scatterContainer ? scatterContainer.clientWidth : window.innerWidth * 0.6,
@@ -19,16 +22,13 @@ const updateDimensions = () => {
   };
 };
 
-let scatter, bar, selectedCluster = null;
 window.addEventListener("load", () => {
   ({ scatter, bar } = updateDimensions());
-  createScatterplot([]); // Ensure initial render
+  createScatterplot([]); // Initial render
   createBarchart([]);
 });
 
 let data;
-
-
 d3.csv("../data/pca_results_with_clusters.csv").then(csvData => {
   data = csvData;
   data.forEach(d => {
@@ -44,12 +44,17 @@ d3.csv("../data/pca_results_with_clusters.csv").then(csvData => {
     d.instrumentalness = +d.instrumentalness;
     d.mode = +d.mode;
     d.acousticness = +d.acousticness;
+    if (d.track_album_release_date) {
+      d.track_album_release_date = new Date(d.track_album_release_date);
+    }
   });
 
+  // Normalize loudness
   const normalize = (val, min, max) => (val - min) / (max - min);
   const minLoudness = d3.min(data, d => d.loudness), maxLoudness = d3.max(data, d => d.loudness);
   data.forEach(d => d.loudness = normalize(d.loudness, minLoudness, maxLoudness));
 
+  // Create the main visualizations.
   const scatterSvg = createScatterplot(data);
   const barSvg = createBarchart();
   updateBarChart(data, barSvg, null);
@@ -57,43 +62,98 @@ d3.csv("../data/pca_results_with_clusters.csv").then(csvData => {
   createFilters(data);
   updatePopularityCharts(data);
 
+  // Create the date-interval area chart
+  createDateIntervalSelector(data);
+
   document.getElementById("reset-view").addEventListener("click", () => {
     selectedCluster = null;
+    selectedDateRange = null;
+    createDateIntervalSelector(data);
     updateBarChart(data, barSvg, null);
     updateClusterInfo(data, null);
     updateFilters(data, null);
     updatePopularityCharts(data);
+    updateTopTracksChart(data);
     scatterSvg.selectAll(".scatter-circle").attr("opacity", 1);
   });
 });
 
+/* ---------------------- Visualization Functions ---------------------- */
+
 function createScatterplot(data) {
+  // Clear any existing scatterplot.
   d3.select("#scatterplot-container").html("");
+
   const scatterSvg = d3.select("#scatterplot-container")
-    .append("svg").attr("width", scatter.width).attr("height", scatter.height)
-    .append("g").attr("transform", `translate(${margin.left}, ${margin.top})`);
+    .append("svg")
+    .attr("width", scatter.width)
+    .attr("height", scatter.height)
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-  const xScale = d3.scaleLinear().domain(d3.extent(data, d => d.pca_x)).range([0, scatter.width - margin.left - margin.right]);
-  const yScale = d3.scaleLinear().domain(d3.extent(data, d => d.pca_y)).range([scatter.height - margin.top - margin.bottom, 0]);
+  // Define the scales based on the full data.
+  const xScale = d3.scaleLinear()
+    .domain(d3.extent(data, d => d.pca_x))
+    .range([0, scatter.width - margin.left - margin.right]);
+    
+  const yScale = d3.scaleLinear()
+    .domain(d3.extent(data, d => d.pca_y))
+    .range([scatter.height - margin.top - margin.bottom, 0]);
 
-  scatterSvg.append("g").attr("transform", `translate(0, ${scatter.height - margin.top - margin.bottom})`).call(d3.axisBottom(xScale));
-  scatterSvg.append("g").call(d3.axisLeft(yScale));
-  scatterSvg.selectAll(".scatter-circle").attr("opacity", c => (c.cluster === selectedCluster ? 1 : 0.3));
+  // Append axes.
+  scatterSvg.append("g")
+    .attr("transform", `translate(0, ${scatter.height - margin.top - margin.bottom})`)
+    .call(d3.axisBottom(xScale));
+    
+  scatterSvg.append("g")
+    .call(d3.axisLeft(yScale));
 
-  scatterSvg.selectAll(".scatter-circle").data(data).enter().append("circle")
-    .attr("cx", d => xScale(d.pca_x)).attr("cy", d => yScale(d.pca_y)).attr("r", 4)
-    .attr("fill", d => colorPalette[d.cluster % colorPalette.length])
-    .attr("class", "scatter-circle").attr("stroke", "black").attr("stroke-width", 0.5)
-    .on("click", function (event, d) {
-      selectedCluster = d.cluster;
-      const clusterData = data.filter(x => x.cluster === selectedCluster);
-      updateBarChart(clusterData, d3.select("#barchart-container svg g"), selectedCluster);
-      updatePopularityCharts(clusterData);
-      updateFilters(data, selectedCluster);
-      updateClusterInfo(data, selectedCluster);
-      scatterSvg.selectAll(".scatter-circle").attr("opacity", c => (c.cluster === selectedCluster ? 1 : 0.3));
-    });
+  // Draw all data points.
+  scatterSvg.selectAll(".scatter-circle")
+    .data(data)
+    .enter()
+    .append("circle")
+      .attr("class", "scatter-circle")
+      .attr("cx", d => xScale(d.pca_x))
+      .attr("cy", d => yScale(d.pca_y))
+      .attr("r", 4)
+      .attr("fill", d => colorPalette[d.cluster % colorPalette.length])
+      .attr("stroke", "black")
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 1) // Initially, all dots are fully opaque.
+      .on("click", function(event, d) {
+        // When a circle is clicked, update the selected cluster.
+        selectedCluster = d.cluster;
+        
+        // Update the opacity of the dots: only the dots in the selected cluster are fully opaque.
+        updateScatterplotOpacity();
+
+        // Filter the data for the selected cluster for the other charts.
+        const clusterData = data.filter(x => x.cluster === selectedCluster);
+
+        // Update other visualizations with the filtered data.
+        updateBarChart(clusterData, d3.select("#barchart-container svg g"), selectedCluster);
+        updatePopularityCharts(clusterData);
+        updateFilters(data, selectedCluster);
+        updateClusterInfo(data, selectedCluster);
+        updateTopTracksChart(clusterData);
+        // Refresh the date interval selector with the cluster data.
+        d3.select("#date-interval-selector").html("");
+        createDateIntervalSelector(clusterData);
+      });
+  
   return scatterSvg;
+}
+
+// Helper function to update opacity without re-rendering the scatterplot.
+function updateScatterplotOpacity() {
+  d3.selectAll(".scatter-circle")
+    .attr("opacity", d => {
+      // If no cluster is selected, show all dots fully.
+      if (selectedCluster === null) return 1;
+      // Otherwise, highlight dots that belong to the selected cluster.
+      return d.cluster === selectedCluster ? 1 : 0.3;
+    });
 }
 
 function createBarchart() {
@@ -107,14 +167,19 @@ function updateBarChart(data, barSvg, cluster) {
   const audioFeatures = ['energy', 'danceability', 'loudness', 'liveness', 'valence', 'speechiness', 'instrumentalness', 'mode', 'acousticness'];
   const averages = Object.fromEntries(audioFeatures.map(f => [f, d3.mean(data, d => d[f]) || 0]));
 
-  const xScale = d3.scaleBand().domain(audioFeatures).range([0, bar.width - margin.left - margin.right]).padding(0.4);
+  const xScale = d3.scaleBand()
+    .domain(audioFeatures)
+    .range([0, bar.width - margin.left - margin.right])
+    .padding(0.4);
   const yScale = d3.scaleLinear().domain([0, 1]).range([bar.height - margin.top - margin.bottom, 0]);
 
   barSvg.selectAll("rect").data(Object.entries(averages))
     .join("rect")
     .transition().duration(500)
-    .attr("x", d => xScale(d[0])).attr("y", d => yScale(d[1]))
-    .attr("width", xScale.bandwidth()).attr("height", d => bar.height - margin.top - margin.bottom - yScale(d[1]))
+    .attr("x", d => xScale(d[0]))
+    .attr("y", d => yScale(d[1]))
+    .attr("width", xScale.bandwidth())
+    .attr("height", d => bar.height - margin.top - margin.bottom - yScale(d[1]))
     .attr("fill", cluster === null ? "#FFA500" : "#1E90FF");
 
   barSvg.selectAll("text").remove();
@@ -192,36 +257,117 @@ function updateClusterInfo(data, cluster) {
   resetButton.style.display = "block";
 }
 
-function splitArtists(artistString) {
-  // Define a unique token that is unlikely to appear in other names.
-  const token = "Tyler_The_Creator";
-  // Replace the exception with the token.
-  const safeString = artistString.replace(/Tyler,\s*The\s*Creator/g, token);
-  // Split on commas (with optional whitespace) and then convert the token back.
-  return safeString.split(/,\s*/).map(artist => artist === token ? "Tyler, The Creator" : artist);
+/* ---------------------- Date Interval Selector ---------------------- */
+
+function createDateIntervalSelector(data) {
+  // Clear any previous content.
+  d3.select("#date-interval-selector").html("");
+
+  // Get the container dimensions (ensure CSS sets the width/height).
+  const container = document.getElementById("date-interval-selector");
+  const containerWidth = container.clientWidth || 800;   // fallback width
+  const containerHeight = container.clientHeight || 150; // fallback height
+
+  // Define margins for this chart.
+  const margin = { top: 10, right: 10, bottom: 30, left: 10 };
+  // Define dimensions for the chart area.
+  const width = containerWidth - margin.left - margin.right;
+  const height = containerHeight - margin.top - margin.bottom;
+
+  // Append the SVG element using the container's dimensions.
+  const svg = d3.select("#date-interval-selector")
+    .append("svg")
+    .attr("width", containerWidth)
+    .attr("height", containerHeight)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Add an instruction text to guide the user.
+  svg.append("text")
+    .attr("class", "brush-instruction")
+    .attr("x", width / 2)
+    .attr("y", 5)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#666")
+    .style("font-size", "12px")
+    .text("Drag over the area to select a date range");
+
+  // Set the x-scale domain to always start at January 1, 1990.
+  const minDate = new Date("1990-01-01");
+  const maxDate = d3.max(data, d => d.track_album_release_date);
+  const x = d3.scaleTime()
+    .domain([minDate, maxDate])
+    .range([0, width]);
+
+  // Bin the data by month (adjust thresholds as needed).
+  const binGenerator = d3.bin()
+    .domain(x.domain())
+    .value(d => d.track_album_release_date)
+    .thresholds(x.ticks(d3.timeMonth));
+  const bins = binGenerator(data);
+
+  // Create the y-scale based on the bin counts.
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(bins, d => d.length)])
+    .range([height, 0]);
+
+  // Append the x-axis.
+  svg.append("g")
+    .attr("transform", `translate(0, ${height})`)
+    .call(d3.axisBottom(x));
+
+  // Define and draw the area.
+  const area = d3.area()
+    .x(d => x(d.x0))
+    .y0(height)
+    .y1(d => y(d.length));
+
+  svg.append("path")
+    .datum(bins)
+    .attr("fill", "#69b3a2")
+    .attr("d", area);
+
+  // Add a brush to allow date range selection.
+  const brush = d3.brushX()
+    .extent([[0, 0], [width, height]])
+    .on("end", brushEnded);
+
+  // Append the brush group and set its initial selection to the full range.
+  const brushGroup = svg.append("g")
+    .attr("class", "brush")
+    .call(brush);
+  brushGroup.call(brush.move, [width - width * 0.1, width]); // Default: small portion at the start selected
+
+  function brushEnded({ selection }) {
+    if (!selection) {
+      selectedDateRange = null;
+      applyFilters(false); // Date brush cleared: do not refresh the interval selector.
+      return;
+    }
+    // Convert the pixel coordinates to dates.
+    const [x0, x1] = selection.map(x.invert);
+    selectedDateRange = [x0, x1];
+    console.log("Selected date range:", selectedDateRange);
+    applyFilters(false); // When selecting a date, do not refresh the interval selector.
+  }
 }
+
+/* ---------------------- Filtering Functions ---------------------- */
 
 function createFilters(dataForFilters) {
   const genreFilterDiv = document.getElementById('genre-filters');
   const artistFilterDiv = document.getElementById('artist-filters');
-
-  // Clear any existing filters.
   genreFilterDiv.innerHTML = "";
   artistFilterDiv.innerHTML = "";
 
-  // Generate unique genres as before.
   const genres = Array.from(new Set(dataForFilters.map(d => d.playlist_genre)));
 
-  // Generate unique artists by splitting the track_artist field using splitArtists.
   const artistSet = new Set();
   dataForFilters.forEach(d => {
-    splitArtists(d.track_artist).forEach(artist => {
-      artistSet.add(artist);
-    });
+    splitArtists(d.track_artist).forEach(artist => artistSet.add(artist));
   });
   const artists = Array.from(artistSet);
 
-  // Create a checkbox for each genre.
   genres.forEach(genre => {
     const checkboxItem = document.createElement('div');
     checkboxItem.className = 'checkbox-item';
@@ -241,7 +387,6 @@ function createFilters(dataForFilters) {
     genreFilterDiv.appendChild(checkboxItem);
   });
 
-  // Create a checkbox for each artist.
   artists.forEach(artist => {
     const checkboxItem = document.createElement('div');
     checkboxItem.className = 'checkbox-item';
@@ -274,7 +419,7 @@ function onFilterChange() {
   applyFilters();
 }
 
-function applyFilters() {
+function applyFilters(refreshDateInterval = true, refreshScatterplot = true) {
   const genreFilterDiv = document.getElementById('genre-filters');
   const artistFilterDiv = document.getElementById('artist-filters');
 
@@ -286,29 +431,62 @@ function applyFilters() {
     artistFilterDiv.querySelectorAll('input[type="checkbox"]:checked')
   ).map(cb => cb.value);
 
-  // Start with the full dataset or, if a cluster is selected, only that cluster’s data.
+  // Start with the full dataset; if a cluster is selected, filter by it.
   let filteredData = data;
   if (selectedCluster !== null) {
     filteredData = filteredData.filter(d => d.cluster === selectedCluster);
   }
-  // Apply the genre filter if any genres are selected.
+
+  // Apply the date range filter if set.
+  if (selectedDateRange) {
+    filteredData = filteredData.filter(d =>
+      d.track_album_release_date >= selectedDateRange[0] &&
+      d.track_album_release_date <= selectedDateRange[1]
+    );
+  }
+
+  // Apply genre and artist filters.
   if (selectedGenres.length > 0) {
     filteredData = filteredData.filter(d => selectedGenres.includes(d.playlist_genre));
   }
-  // Apply the artist filter if any artists are selected.
   if (selectedArtists.length > 0) {
     filteredData = filteredData.filter(d => {
-      // Use the helper to safely split the track_artist field.
       const artists = splitArtists(d.track_artist);
-      // Check if any of the artists are in the selected filters.
       return artists.some(artist => selectedArtists.includes(artist));
     });
   }
 
-  // Update the visualizations with the filtered data.
+  // Update other visualizations.
   updateBarChart(filteredData, d3.select("#barchart-container svg g"), selectedCluster);
   updateClusterInfo(filteredData, selectedCluster);
   updatePopularityCharts(filteredData);
+  updateTopTracksChart(filteredData);
+
+  // Instead of re-rendering the scatterplot, update the opacity of its dots.
+  d3.selectAll(".scatter-circle")
+    .attr("opacity", d => filteredData.includes(d) ? 1 : 0.3);
+
+  // Refresh the date interval selector if the flag is true.
+  if (refreshDateInterval) {
+    d3.select("#date-interval-selector").html("");
+    createDateIntervalSelector(filteredData);
+  }
+
+  // Show the reset view button if any filter is applied.
+  const resetButton = document.getElementById("reset-view");
+  if (selectedCluster !== null || selectedDateRange !== null || selectedGenres.length > 0 || selectedArtists.length > 0) {
+    resetButton.style.display = "block";
+  } else {
+    resetButton.style.display = "none";
+  }
+}
+
+/* ---------------------- Other Helper Functions ---------------------- */
+
+function splitArtists(artistString) {
+  const token = "Tyler_The_Creator";
+  const safeString = artistString.replace(/Tyler,\s*The\s*Creator/g, token);
+  return safeString.split(/,\s*/).map(artist => artist === token ? "Tyler, The Creator" : artist);
 }
 
 function filterCheckboxes(containerId, searchValue) {
@@ -316,57 +494,39 @@ function filterCheckboxes(containerId, searchValue) {
   const items = container.querySelectorAll('.checkbox-item');
   items.forEach(item => {
     const labelText = item.querySelector('label').textContent.toLowerCase();
-    // If the search query is found in the label text, show the item; otherwise, hide it.
-    if (labelText.indexOf(searchValue.toLowerCase()) !== -1) {
-      item.style.display = 'flex';  // 'flex' since our layout uses flex; use '' if needed.
-    } else {
-      item.style.display = 'none';
-    }
+    item.style.display = labelText.indexOf(searchValue.toLowerCase()) !== -1 ? 'flex' : 'none';
   });
 }
 
-// Add event listener for the genre search field.
 document.getElementById('genre-search').addEventListener('input', function (e) {
-  const searchValue = e.target.value;
-  filterCheckboxes('genre-filters', searchValue);
+  filterCheckboxes('genre-filters', e.target.value);
 });
-
-// Add event listener for the artist search field.
 document.getElementById('artist-search').addEventListener('input', function (e) {
-  const searchValue = e.target.value;
-  filterCheckboxes('artist-filters', searchValue);
+  filterCheckboxes('artist-filters', e.target.value);
 });
 
 function updatePopularityCharts(filteredData) {
   console.log("inside updatePopularityCharts");
-  // Aggregate popularity by genre (using playlist_genre)
   const genreMap = {};
   filteredData.forEach(d => {
-    // Ensure the record has a valid genre and track_popularity value.
     if (d.playlist_genre && d.track_popularity != null) {
       if (!genreMap[d.playlist_genre]) {
         genreMap[d.playlist_genre] = { sum: 0, count: 0 };
       }
-      // Convert track_popularity to number if necessary.
       genreMap[d.playlist_genre].sum += +d.track_popularity;
       genreMap[d.playlist_genre].count += 1;
     }
   });
-  // Create an array of objects with genre and average popularity
   let genreData = Object.entries(genreMap).map(([genre, obj]) => ({
     playlist_genre: genre,
     avgPopularity: obj.sum / obj.count
   }));
-  // Sort descending by average popularity and take top 10
   genreData.sort((a, b) => b.avgPopularity - a.avgPopularity);
   genreData = genreData.slice(0, 10);
 
-  // Similarly, aggregate by artist (using track_artist)
-  // Similarly, aggregate by artist (using track_artist) with exception handling.
   const artistMap = {};
   filteredData.forEach(d => {
     if (d.track_artist && d.track_popularity != null) {
-      // Use splitArtists to handle multiple artists and the exception.
       splitArtists(d.track_artist).forEach(artist => {
         if (!artistMap[artist]) {
           artistMap[artist] = { sum: 0, count: 0 };
@@ -384,31 +544,23 @@ function updatePopularityCharts(filteredData) {
   artistData = artistData.slice(0, 10);
   console.log("genreData", genreData);
   console.log("artistData", artistData);
-  // Now update the two horizontal bar charts.
-  updateHorizontalBarChart("#top-genres-chart", genreData, "playlist_genre");
+  updateTopGenresPieChart(genreData);
   updateHorizontalBarChart("#top-artists-chart", artistData, "track_artist");
 }
 
 function updateHorizontalBarChart(selector, data, labelField) {
-  // Get the container element and its dimensions.
   const container = document.querySelector(selector);
   let containerWidth = container.offsetWidth;
   let containerHeight = container.offsetHeight;
-
-  // Fallback defaults if container dimensions are very small.
   if (containerWidth < 100) containerWidth = 300;
   if (containerHeight < 50) containerHeight = 200;
 
-  // Use minimal margins to maximize drawing area.
-  // Increase bottom margin slightly to accommodate the x axis.
   const marginChart = { top: 2, right: 70, bottom: 20, left: 10 };
   const width = containerWidth - marginChart.left - marginChart.right;
   const height = containerHeight - marginChart.top - marginChart.bottom;
 
-  // Clear any previous SVG.
   d3.select(selector).select("svg").remove();
 
-  // Append the SVG element that fills the container.
   const svg = d3.select(selector)
     .append("svg")
     .attr("width", containerWidth)
@@ -416,18 +568,12 @@ function updateHorizontalBarChart(selector, data, labelField) {
     .append("g")
     .attr("transform", `translate(${marginChart.left},${marginChart.top})`);
 
-  // x scale: fixed to track popularity range 0–100.
-  const x = d3.scaleLinear()
-    .domain([0, 100])
-    .range([0, width]);
-
-  // y scale: a band scale for each label.
+  const x = d3.scaleLinear().domain([0, 100]).range([0, width]);
   const y = d3.scaleBand()
     .domain(data.map(d => d[labelField]))
     .range([0, height])
     .padding(0.1);
 
-  // Draw the bars.
   svg.selectAll(".bar")
     .data(data)
     .enter()
@@ -439,20 +585,18 @@ function updateHorizontalBarChart(selector, data, labelField) {
     .attr("height", y.bandwidth())
     .attr("fill", "#1E90FF");
 
-  // Append white text showing the genre/artist name next to each bar.
   svg.selectAll(".label")
     .data(data)
     .enter()
     .append("text")
     .attr("class", "label")
-    .attr("x", d => x(d.avgPopularity) + 3)  // Positioned just to the right of the bar.
+    .attr("x", d => x(d.avgPopularity) + 3)
     .attr("y", d => y(d[labelField]) + y.bandwidth() / 2)
     .attr("dy", "0.35em")
     .style("fill", "#fff")
     .style("font-size", "10px")
     .text(d => d[labelField]);
 
-  // Append the x-axis at the bottom of the chart.
   svg.append("g")
     .attr("class", "axis")
     .attr("transform", `translate(0, ${height})`)
@@ -460,4 +604,139 @@ function updateHorizontalBarChart(selector, data, labelField) {
     .selectAll("text")
     .style("font-size", "10px")
     .style("fill", "#fff");
+}
+
+function updateTopGenresPieChart(genreData) {
+  // Get container dimensions for the pie chart.
+  const container = document.getElementById("top-genres-chart");
+  const containerWidth = container.clientWidth || 400;
+  const containerHeight = container.clientHeight || 400;
+  // Use the smaller dimension to set the radius.
+  const radius = Math.min(containerWidth, containerHeight) / 2 - 4;
+
+  // Remove any existing svg.
+  d3.select("#top-genres-chart").select("svg").remove();
+
+  // Append an SVG element and group (g) that is centered.
+  const svg = d3.select("#top-genres-chart")
+    .append("svg")
+    .attr("width", containerWidth)
+    .attr("height", containerHeight)
+    .append("g")
+    .attr("transform", `translate(${containerWidth / 2}, ${containerHeight / 2})`);
+
+  // Create a color scale using a D3 categorical scheme.
+  const color = d3.scaleOrdinal()
+    .domain(genreData.map(d => d.playlist_genre))
+    .range(d3.schemeCategory10);
+
+  // Create a pie layout generator with the value accessor.
+  const pie = d3.pie()
+    .value(d => d.avgPopularity)
+    .sort(null);
+  const data_ready = pie(genreData);
+
+  // Create an arc generator for the slices.
+  const arc = d3.arc()
+    .innerRadius(0) // For a pie chart; set > 0 for a donut chart.
+    .outerRadius(radius);
+
+  // Build the pie chart: draw each slice.
+  svg.selectAll("path")
+    .data(data_ready)
+    .enter()
+    .append("path")
+      .attr("d", arc)
+      .attr("fill", d => color(d.data.playlist_genre))
+      .attr("stroke", "white")
+      .style("stroke-width", "2px")
+      .style("opacity", 0.7);
+
+  // Optionally, add labels to the slices.
+  svg.selectAll("text")
+    .data(data_ready)
+    .enter()
+    .append("text")
+      .text(d => d.data.playlist_genre)
+      .attr("transform", d => {
+        const [x, y] = arc.centroid(d);
+        const offset = 20; // Adjust this value to move the labels farther from the center
+        const angle = Math.atan2(y, x);
+        return `translate(${x + offset * Math.cos(angle)}, ${y + offset * Math.sin(angle)})`;
+      })
+      .style("text-anchor", "middle")
+      .style("font-size", "10px")
+      .style("fill", "white");
+}
+
+function updateTopTracksChart(filteredData) {
+  // Sort the filtered data by track popularity (descending)
+  const sortedData = filteredData.sort((a, b) => b.track_popularity - a.track_popularity);
+  
+  // Take the top 10 tracks (adjust this number as needed)
+  const topTracks = sortedData.slice(0, 10);
+  console.log("topTracks", topTracks);
+
+  // Get the container dimensions
+  const container = document.getElementById("top-tracks-chart");
+  const containerWidth = container.clientWidth || 800;
+  const containerHeight = container.clientHeight || 400;
+  
+  // Define reduced margins for the chart area.
+  const marginChart = { top: 10, right: 10, bottom: 20, left: 10 };
+  const width = containerWidth - marginChart.left - marginChart.right;
+  const height = containerHeight - marginChart.top - marginChart.bottom;
+
+  // Clear any previous chart.
+  d3.select("#top-tracks-chart").select("svg").remove();
+
+  // Append the SVG element.
+  const svg = d3.select("#top-tracks-chart")
+    .append("svg")
+    .attr("width", containerWidth)
+    .attr("height", containerHeight)
+    .append("g")
+    .attr("transform", `translate(${marginChart.left},${marginChart.top})`);
+
+  // Create an x-scale based on the track popularity.
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(topTracks, d => d.track_popularity)])
+    .range([0, width]);
+
+  // Create a y-scale using track names (used for positioning the bars).
+  const y = d3.scaleBand()
+    .domain(topTracks.map(d => d.track_name))
+    .range([0, height])
+    .padding(0.1);
+
+  // Draw the horizontal bars.
+  svg.selectAll("rect")
+    .data(topTracks)
+    .enter()
+    .append("rect")
+      .attr("x", 0)
+      .attr("y", d => y(d.track_name))
+      .attr("width", d => x(d.track_popularity))
+      .attr("height", y.bandwidth())
+      .attr("fill", "#1E90FF");
+
+  // Append text labels (track names) inside the bars.
+  svg.selectAll(".track-label")
+    .data(topTracks)
+    .enter()
+    .append("text")
+      .attr("class", "track-label")
+      .attr("x", d => x(d.track_popularity) / 2)  // Center horizontally inside bar.
+      .attr("y", d => y(d.track_name) + y.bandwidth() / 2) // Center vertically inside bar.
+      .attr("dy", "0.35em")
+      .attr("text-anchor", "middle")
+      .attr("fill", "white")
+      .style("font-size", "12px")
+      .text(d => d.track_name);
+
+  // Append the x-axis.
+  svg.append("g")
+    .attr("transform", `translate(0, ${height})`)
+    .call(d3.axisBottom(x).ticks(5));
+
 }
