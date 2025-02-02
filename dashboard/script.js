@@ -437,6 +437,7 @@ function applyFilters(refreshDateInterval = true, refreshScatterplot = true) {
     filteredData = filteredData.filter(d => d.cluster === selectedCluster);
   }
 
+  let fullRangeData = filteredData;
   // Apply the date range filter if set.
   if (selectedDateRange) {
     filteredData = filteredData.filter(d =>
@@ -448,9 +449,14 @@ function applyFilters(refreshDateInterval = true, refreshScatterplot = true) {
   // Apply genre and artist filters.
   if (selectedGenres.length > 0) {
     filteredData = filteredData.filter(d => selectedGenres.includes(d.playlist_genre));
+    fullRangeData = fullRangeData.filter(d => selectedGenres.includes(d.playlist_genre));
   }
   if (selectedArtists.length > 0) {
     filteredData = filteredData.filter(d => {
+      const artists = splitArtists(d.track_artist);
+      return artists.some(artist => selectedArtists.includes(artist));
+    });
+    fullRangeData = fullRangeData.filter(d => {
       const artists = splitArtists(d.track_artist);
       return artists.some(artist => selectedArtists.includes(artist));
     });
@@ -469,7 +475,7 @@ function applyFilters(refreshDateInterval = true, refreshScatterplot = true) {
   // Refresh the date interval selector if the flag is true.
   if (refreshDateInterval) {
     d3.select("#date-interval-selector").html("");
-    createDateIntervalSelector(filteredData);
+    createDateIntervalSelector(fullRangeData);
   }
 
   // Show the reset view button if any filter is applied.
