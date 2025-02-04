@@ -180,7 +180,7 @@ function updateBarChart(data, barSvg, cluster) {
     .attr("y", d => yScale(d[1]))
     .attr("width", xScale.bandwidth())
     .attr("height", d => bar.height - margin.top - margin.bottom - yScale(d[1]))
-    .attr("fill", cluster === null ? "#FFA500" : "#1E90FF");
+    .attr("fill", cluster === null ? "magenta" : colorPalette[cluster % colorPalette.length]);
 
   barSvg.selectAll("text").remove();
   barSvg.selectAll(".bar-text").data(Object.entries(averages))
@@ -623,18 +623,23 @@ function updateTopGenresPieChart(genreData) {
   // Remove any existing svg.
   d3.select("#top-genres-chart").select("svg").remove();
 
-  // Append an SVG element and group (g) that is centered.
+  // Append an SVG element.
   const svg = d3.select("#top-genres-chart")
     .append("svg")
     .attr("width", containerWidth)
-    .attr("height", containerHeight)
-    .append("g")
-    .attr("transform", `translate(${containerWidth / 2}, ${containerHeight / 2})`);
+    .attr("height", containerHeight);
 
-  // Create a color scale using a D3 categorical scheme.
+  // Append a group for the pie chart, centered slightly to the left.
+  const pieGroup = svg.append("g")
+    .attr("transform", `translate(${containerWidth / 2 - 40}, ${containerHeight / 2})`);
+
+  // Create a color scale using the custom 10-color palette.
   const color = d3.scaleOrdinal()
     .domain(genreData.map(d => d.playlist_genre))
-    .range(d3.schemeCategory10);
+    .range(["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]);
+
+  // Compute the total value to calculate percentages.
+  const total = d3.sum(genreData, d => d.avgPopularity);
 
   // Create a pie layout generator with the value accessor.
   const pie = d3.pie()
@@ -648,7 +653,7 @@ function updateTopGenresPieChart(genreData) {
     .outerRadius(radius);
 
   // Build the pie chart: draw each slice.
-  svg.selectAll("path")
+  pieGroup.selectAll("path")
     .data(data_ready)
     .enter()
     .append("path")
@@ -656,23 +661,45 @@ function updateTopGenresPieChart(genreData) {
       .attr("fill", d => color(d.data.playlist_genre))
       .attr("stroke", "white")
       .style("stroke-width", "2px")
-      .style("opacity", 0.7);
+      .style("opacity", 0.9);
 
-  // Optionally, add labels to the slices.
-  svg.selectAll("text")
+  // Add percentage labels inside the slices.
+  pieGroup.selectAll("text")
     .data(data_ready)
     .enter()
     .append("text")
-      .text(d => d.data.playlist_genre)
+      .text(d => ((d.data.avgPopularity / total) * 100).toFixed(1) + "%")
       .attr("transform", d => {
         const [x, y] = arc.centroid(d);
-        const offset = 20; // Adjust this value to move the labels farther from the center
-        const angle = Math.atan2(y, x);
-        return `translate(${x + offset * Math.cos(angle)}, ${y + offset * Math.sin(angle)})`;
+        return `translate(${x}, ${y})`;
       })
       .style("text-anchor", "middle")
       .style("font-size", "10px")
       .style("fill", "white");
+
+  // Add a legend on the right side.
+  const legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${containerWidth - 100}, 20)`);
+
+  const legendItems = legend.selectAll(".legend-item")
+    .data(genreData)
+    .enter()
+    .append("g")
+    .attr("class", "legend-item")
+    .attr("transform", (d, i) => `translate(0, ${i * 20})`);
+
+  legendItems.append("rect")
+    .attr("width", 12)
+    .attr("height", 12)
+    .attr("fill", d => color(d.playlist_genre));
+
+  legendItems.append("text")
+    .attr("x", 18)
+    .attr("y", 10)
+    .text(d => d.playlist_genre)
+    .style("font-size", "12px")
+    .style("fill", "#fff");
 }
 
 function updateTopTracksChart(filteredData) {
