@@ -618,7 +618,7 @@ function updateTopGenresPieChart(genreData) {
   const containerWidth = container.clientWidth || 400;
   const containerHeight = container.clientHeight || 400;
   // Use the smaller dimension to set the radius.
-  const radius = Math.min(containerWidth, containerHeight) / 2 - 4;
+  const radius = Math.min(containerWidth - 100, containerHeight) * 0.45;
 
   // Remove any existing svg.
   d3.select("#top-genres-chart").select("svg").remove();
@@ -631,7 +631,7 @@ function updateTopGenresPieChart(genreData) {
 
   // Append a group for the pie chart, centered slightly to the left.
   const pieGroup = svg.append("g")
-    .attr("transform", `translate(${containerWidth / 2 - 40}, ${containerHeight / 2})`);
+    .attr("transform", `translate(${radius + 10}, ${containerHeight / 2})`);
 
   // Create a color scale using the custom 10-color palette.
   const color = d3.scaleOrdinal()
@@ -663,7 +663,7 @@ function updateTopGenresPieChart(genreData) {
       .style("stroke-width", "2px")
       .style("opacity", 0.9);
 
-  // Add percentage labels inside the slices.
+  // Add percentage labels further from the center of the slices.
   pieGroup.selectAll("text")
     .data(data_ready)
     .enter()
@@ -671,16 +671,19 @@ function updateTopGenresPieChart(genreData) {
       .text(d => ((d.data.avgPopularity / total) * 100).toFixed(1) + "%")
       .attr("transform", d => {
         const [x, y] = arc.centroid(d);
-        return `translate(${x}, ${y})`;
+        // Multiply the centroid coordinates to push the label outward.
+        const factor = 1.4;
+        return `translate(${x * factor}, ${y * factor})`;
       })
       .style("text-anchor", "middle")
       .style("font-size", "10px")
       .style("fill", "white");
 
-  // Add a legend on the right side.
+  // Dynamically calculate the legend offset based on container width.
+  const legendOffset = containerWidth < 400 ? containerWidth * 0.30 : 100;
   const legend = svg.append("g")
     .attr("class", "legend")
-    .attr("transform", `translate(${containerWidth - 100}, 20)`);
+    .attr("transform", `translate(${containerWidth - legendOffset}, 20)`);
 
   const legendItems = legend.selectAll(".legend-item")
     .data(genreData)
